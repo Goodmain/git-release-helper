@@ -1,0 +1,36 @@
+# Git Release Helper Configuration
+
+# Default branches - The tool will check if you're on one of these branches
+# before proceeding with release creation
+default_branches:
+  - main
+  - master
+
+# Commit message format - The expected format of commit messages
+# Used for extracting ticket names
+commit_message_format: "TICKET_NAME: Commit message"
+
+# Ticket pattern - Regular expression pattern for identifying ticket names in commit messages
+# Example: ALLI-123, ALLI-456
+ticket_pattern: "ALLI-[0-9]+"
+
+# Tag format - Format for automatically generated tags
+# Supported placeholders:
+# - YYYY: 4-digit year (e.g., 2024)
+# - YY: 2-digit year (e.g., 24)
+# - MM: 2-digit month (e.g., 07)
+# - DD: 2-digit day (e.g., 29)
+# - N: Sequential number for tags created on the same day
+# Example formats: "YYYY-MM-DD.N", "release-YY.MM.DD-N", "my-tag-MMDD"
+tag_format: "YYYYMMDD.N"
+
+# Project aliases - Map repository names to friendly project names
+# These will be used in release messages
+# Example: {"my-repo-name": "My Project", "another-repo": "Another Project"}
+project_aliases: {}
+
+# Message format - Format for release messages (markdown or plain)
+message_format: "markdown"
+
+# Templates directory - Location of message templates
+templates_dir: "~/.git-release-helper/templates"
