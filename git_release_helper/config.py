@@ -59,11 +59,10 @@ def ensure_templates_dir():
 
 def load_config():
     """Load configuration from file or create default if it doesn't exist."""
-    global _CONFIG
-
+    # Use the module-level _CONFIG variable without global statement
     # Return already loaded config if available
-    if _CONFIG is not None:
-        return _CONFIG
+    if globals().get('_CONFIG') is not None:
+        return globals().get('_CONFIG')
 
     ensure_config_dir()
 
@@ -105,8 +104,8 @@ def load_config():
         except (yaml.YAMLError, IOError) as exception:
             click.echo(f"Error loading local config file: {str(exception)}")
 
-    # Store in global variable
-    _CONFIG = config
+    # Store in module-level variable
+    globals()['_CONFIG'] = config
 
     return config
 
