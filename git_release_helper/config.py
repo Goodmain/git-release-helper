@@ -1,6 +1,7 @@
 import os
 import yaml
 import click
+import git
 
 # Default configuration values
 DEFAULT_CONFIG = {
@@ -8,14 +9,26 @@ DEFAULT_CONFIG = {
     "commit_message_format": "TICKET_NAME: Commit message",
     "ticket_pattern": "ALLI-[0-9]+",
     "tag_format": "YYYYMMDD.N",
-    "project_aliases": {},
+    "project_name": None,
     "message_format": "markdown",
-    "templates_dir": "./templates"
+    "templates_dir": "./templates",
+    "connectors": {
+        "type": None,  # Options: None, "jira", "github", "gitlab", etc.
+        "jira": {
+            "api_url": "https://your-jira-instance.atlassian.net",
+            "api_key": "",
+            "username": ""
+        }
+    }
 }
 
 # Configuration paths
 CONFIG_DIR = os.path.expanduser("~/.git-release-helper")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.yml")
+LOCAL_CONFIG_FILE = ".release_config.yml"
+
+# Global configuration variable
+_CONFIG = None
 
 def ensure_config_dir():
     """Ensure the config directory exists."""
@@ -46,20 +59,56 @@ def ensure_templates_dir():
 
 def load_config():
     """Load configuration from file or create default if it doesn't exist."""
+    global _CONFIG
+    
+    # Return already loaded config if available
+    if _CONFIG is not None:
+        return _CONFIG
+    
     ensure_config_dir()
     
+    # Start with default config
+    config = DEFAULT_CONFIG.copy()
+    
+    # Load global config if exists
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, 'r') as f:
-                return yaml.safe_load(f) or DEFAULT_CONFIG
+                global_config = yaml.safe_load(f)
+                if global_config:
+                    config.update(global_config)
         except (yaml.YAMLError, IOError) as e:
-            click.echo(f"Error loading config file: {str(e)}")
-            click.echo("Using default configuration.")
-            return DEFAULT_CONFIG
+            click.echo(f"Error loading global config file: {str(e)}")
     
-    # No config found, create default
-    save_config(DEFAULT_CONFIG)
-    return DEFAULT_CONFIG
+    # Load local config if exists (overrides global config)
+    if os.path.exists(LOCAL_CONFIG_FILE):
+        try:
+            with open(LOCAL_CONFIG_FILE, 'r') as f:
+                local_config = yaml.safe_load(f)
+                if local_config:
+                    # Merge connectors section if it exists in both configs
+                    if 'connectors' in local_config and 'connectors' in config:
+                        if local_config['connectors'].get('type'):
+                            config['connectors']['type'] = local_config['connectors']['type']
+                        
+                        # Merge connector-specific configs
+                        for connector_name, connector_config in local_config['connectors'].items():
+                            if connector_name != 'type' and connector_name in config['connectors']:
+                                config['connectors'][connector_name].update(connector_config)
+                    
+                    # Update other top-level keys
+                    for key, value in local_config.items():
+                        if key != 'connectors':
+                            config[key] = value
+                    
+                    click.echo("Local config loaded and applied.")
+        except (yaml.YAMLError, IOError) as e:
+            click.echo(f"Error loading local config file: {str(e)}")
+    
+    # Store in global variable
+    _CONFIG = config
+    
+    return config
 
 def save_config(config):
     """Save configuration to YAML file."""
@@ -91,10 +140,10 @@ def get_tag_format():
     config = load_config()
     return config.get("tag_format", DEFAULT_CONFIG["tag_format"])
 
-def get_project_aliases():
-    """Get the project aliases dictionary."""
+def get_project_name():
+    """Get the project name."""
     config = load_config()
-    return config.get("project_aliases", DEFAULT_CONFIG["project_aliases"])
+    return config.get("project_name", DEFAULT_CONFIG["project_name"])
 
 def get_message_format():
     """Get the message format (markdown or plain)."""
@@ -107,6 +156,53 @@ def get_templates_dir():
     templates_dir = config.get("templates_dir", DEFAULT_CONFIG["templates_dir"])
     return os.path.expanduser(templates_dir)
 
+def get_project_name_from_git():
+    """Get project name from git remote URL."""
+    try:
+        repo = git.Repo(os.getcwd())
+        if not repo.remotes:
+            return None
+        
+        # Try to extract project name from the first remote URL
+        remote_url = repo.remotes[0].url
+        
+        # Extract project name from remote URL
+        # Handle different formats: https://github.com/user/project.git or git@github.com:user/project.git
+        if remote_url.endswith('.git'):
+            remote_url = remote_url[:-4]  # Remove .git suffix
+            
+        project_name = os.path.basename(remote_url)
+        return project_name
+    except (git.InvalidGitRepositoryError, git.NoSuchPathError, IndexError):
+        return None
+
+def generate_local_config():
+    """Generate a local config file with project-specific settings."""
+    # Try to get project name from git
+    project_name = get_project_name_from_git()
+    
+    if not project_name:
+        click.echo("Could not determine project name from git. Local config not created.")
+        return False
+    
+    # Create minimal local config with project name and connector set to None
+    local_config = {
+        "project_name": project_name,
+        "connectors": {
+            "type": None
+        }
+    }
+    
+    # Save local config
+    try:
+        with open(LOCAL_CONFIG_FILE, 'w') as f:
+            yaml.dump(local_config, f, default_flow_style=False, sort_keys=False)
+        click.echo(f"Local config file created: {LOCAL_CONFIG_FILE}")
+        return True
+    except IOError as e:
+        click.echo(f"Error creating local config file: {str(e)}")
+        return False
+
 def set_default_branches(branches):
     """Set the list of default branch names."""
     config = load_config()
@@ -116,3 +212,28 @@ def set_default_branches(branches):
 def get_config_path():
     """Get the path to the configuration file."""
     return CONFIG_FILE
+
+def get_local_config_path():
+    """Get the path to the local configuration file if it exists."""
+    if os.path.exists(LOCAL_CONFIG_FILE):
+        return os.path.abspath(LOCAL_CONFIG_FILE)
+    return None
+
+def get_config_content(config_path):
+    """Get the content of a configuration file as a formatted string."""
+    try:
+        with open(config_path, 'r') as f:
+            config_content = yaml.safe_load(f)
+            return yaml.dump(config_content, default_flow_style=False, sort_keys=False)
+    except (yaml.YAMLError, IOError) as e:
+        return f"Error reading config file: {str(e)}"
+
+def get_connector_type():
+    """Get the configured connector type."""
+    config = load_config()
+    return config.get("connectors", {}).get("type")
+
+def get_connector_config(connector_type):
+    """Get the configuration for a specific connector."""
+    config = load_config()
+    return config.get("connectors", {}).get(connector_type, {})

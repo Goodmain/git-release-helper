@@ -24,10 +24,10 @@ ticket_pattern: "ALLI-[0-9]+"
 # Example formats: "YYYY-MM-DD.N", "release-YY.MM.DD-N", "my-tag-MMDD"
 tag_format: "YYYYMMDD.N"
 
-# Project aliases - Map repository names to friendly project names
-# These will be used in release messages
-# Example: {"my-repo-name": "My Project", "another-repo": "Another Project"}
-project_aliases: {}
+# Project name - Name of the project for release messages
+# This will be automatically detected from Git remote URL if using local config
+# or can be manually specified here
+project_name: null
 
 # Message format - Format for release messages (markdown or plain)
 message_format: "markdown"
