@@ -1,6 +1,6 @@
-# GitHub Release Helper
+# Git Release Helper
 
-A simple command-line tool to help create GitHub releases from git tags.
+A command-line tool to help create releases from git tags with support for ticket tracking and CRM integration.
 
 ## Installation
 
@@ -15,27 +15,56 @@ pip install -e .
 
 ## Usage
 
-Once installed, you can use the `release` command from anywhere in your git repository:
+The tool provides several commands to help with release management:
 
 ```bash
-# Use the latest tag
-release
+# Create a new release
+git-release-helper release
 
 # Use a specific tag
-release --tag v1.0.0
+git-release-helper release --tag v1.0.0
 
 # Skip branch validation
-release --force
+git-release-helper release --force
+
+# Initialize local project configuration
+git-release-helper init
 ```
+
+## Features
+
+- Automatically generates tag names based on configurable formats
+- Extracts ticket references from commit messages
+- Fetches ticket details from CRM systems (Jira support included)
+- Creates release notes with ticket information
+- Supports both global and project-specific configurations
 
 ## Configuration
 
-The tool stores configuration in `~/.git-release-helper/config.yml`. The default configuration is created automatically on first run.
+### Global Configuration
+
+The tool stores global configuration in `~/.git-release-helper/config.yml`. The default configuration is created automatically on first run.
 
 ```bash
-# Show the path to your configuration file
-release --show-config
+# Show configuration details
+git-release-helper release --show-config
 ```
+
+The `--show-config` option displays:
+- Global configuration file path and contents
+- Local configuration file path and contents (if present)
+- Final configuration (when local config exists)
+
+### Local Project Configuration
+
+You can create a project-specific configuration that overrides global settings:
+
+```bash
+# Initialize local configuration
+git-release-helper init
+```
+
+This creates a `.release_config.yml` file in your project directory with project-specific settings.
 
 ### Default Branches
 
@@ -72,7 +101,7 @@ The format used for automatically generated tags when no tag is specified:
 
 ```yaml
 # Format for auto-generated tags
-tag_format: "YYYY-MM-DD.N"
+tag_format: "YYYYMMDD.N"
 ```
 
 Supported placeholders:
@@ -87,16 +116,32 @@ Examples:
 - `release-YY.MM.N` → `release-23.01.1`
 - `my-tag-MMDD.N` → `my-tag-0105.1`
 
-### Project Aliases
+### CRM Connectors
 
-You can define friendly names for your repositories that will be used in release messages:
+The tool can integrate with CRM systems to fetch ticket details. Currently supported:
+
+#### Jira
 
 ```yaml
-# Map repository names to friendly project names
-project_aliases:
-  "my-repo-name": "My Project"
-  "another-repo": "Another Project"
+connectors:
+  type: "jira"
+  jira:
+    api_url: "https://your-jira-instance.atlassian.net"
+    api_key: "your-api-key"
+    username: "your-email@example.com"
+    project_key: "PROJECT"
 ```
+
+### Message Format
+
+You can customize the format of release messages:
+
+```yaml
+# Format for release messages (markdown or plain)
+message_format: "markdown"
+```
+
+Custom templates can be added to the templates directory.
 
 ### Message Format
 
@@ -137,8 +182,8 @@ A template configuration file is provided at `config.yml.template` that you can 
 - Extracts and displays unique ticket names from commits since the last release
 - Configurable ticket name pattern matching
 - Automatic tag creation with configurable format
-- Project name extraction from repository
-- Customizable project name aliases
+- Project name extraction from repository or configuration
+- Configurable project name
 - Release message generation in markdown or plain text format
 - Customizable message templates
 

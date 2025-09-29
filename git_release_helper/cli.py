@@ -3,10 +3,13 @@ import git
 import os
 import re
 import datetime
+import yaml
 from git_release_helper.config import (
     get_default_branches, get_config_path, get_ticket_pattern, get_tag_format,
-    get_project_aliases, get_message_format, get_templates_dir, ensure_templates_dir
+    get_project_name, get_message_format, get_templates_dir, ensure_templates_dir,
+    get_connector_type, get_connector_config
 )
+from git_release_helper.connectors import get_connector
 
 
 def get_repo():
@@ -93,7 +96,7 @@ def extract_tickets_from_commits(commits, ticket_pattern):
     return sorted(tickets)
 
 
-def generate_release_message(project_name, tag, tickets, format_to_use):
+def generate_release_message(project_name, tag, tickets, format_to_use, ticket_details=None):
     """Generate a release message based on the specified format."""
     template_file = os.path.join(get_templates_dir(), f"{format_to_use}.template")
     
@@ -110,7 +113,11 @@ def generate_release_message(project_name, tag, tickets, format_to_use):
     
     # Format tickets list based on format
     if tickets:
-        tickets_list = "\n".join([f"- {ticket}" for ticket in tickets])
+        if ticket_details:
+            # Include ticket titles if available
+            tickets_list = "\n".join([f"- {ticket}: {ticket_details.get(ticket, {}).get('title', '')}" if ticket_details.get(ticket, {}).get('title', '') else f"- {ticket}" for ticket in tickets])
+        else:
+            tickets_list = "\n".join([f"- {ticket}" for ticket in tickets])
     else:
         tickets_list = "No tickets found in this release."
     
@@ -153,13 +160,34 @@ def check_remote_branch(repo, current_branch):
 def get_project_name(repo):
     """Extract project name from repository."""
     try:
-        project_name = os.path.basename(os.path.normpath(repo.working_dir))
-        # Check if there's an alias for this project
-        project_aliases = get_project_aliases()
-        if project_name in project_aliases:
-            project_name = project_aliases[project_name]
-        return project_name
-    except:
+        # First check if project_name is set in config
+        from git_release_helper.config import get_project_name as get_configured_project_name
+        configured_name = get_configured_project_name()
+        if configured_name:
+            return configured_name
+            
+        # Otherwise extract from git repo
+        if hasattr(repo, 'remotes') and repo.remotes:
+            # Try to extract from remote URL
+            remote_url = repo.remotes.origin.url
+            if remote_url:
+                # Extract project name from remote URL
+                # Handle different formats: https://github.com/user/project.git or git@github.com:user/project.git
+                if remote_url.endswith('.git'):
+                    remote_url = remote_url[:-4]  # Remove .git suffix
+                
+                project_name = os.path.basename(remote_url)
+                if project_name:
+                    return project_name
+                
+        # Fallback to directory name
+        dir_name = os.path.basename(os.path.normpath(repo.working_dir))
+        if dir_name:
+            return dir_name
+            
+        return "Unknown Project"
+    except Exception as e:
+        print(f"Error getting project name: {str(e)}")
         return "Unknown Project"
 
 
@@ -168,7 +196,8 @@ def handle_tag(repo, tag):
     tag_exists = False
     if not tag:
         tag = generate_tag_name(repo)
-        click.echo(f"Generated tag name: {tag}")
+        project_name = get_project_name(repo)
+        click.echo(f"Generated tag name for {project_name}: {tag}")
     else:
         # Check if the provided tag exists
         try:
@@ -223,11 +252,35 @@ def prepare_release(repo, tag, tag_exists, message_format):
     ticket_pattern = get_ticket_pattern()
     tickets = extract_tickets_from_commits(commits_after_tag, ticket_pattern)
     
+    # Get ticket details from connector if available
+    ticket_details = {}
+    connector_type = get_connector_type()
+    if connector_type and tickets:
+        click.echo(f"\nFetching ticket details from {connector_type.upper()}...")
+        try:
+            connector_config = get_connector_config(connector_type)
+            connector = get_connector(connector_type, connector_config)
+            
+            if connector and connector.validate_connection():
+                ticket_details = connector.get_ticket_details(tickets)
+                if ticket_details:
+                    click.echo("Successfully retrieved ticket details.")
+                else:
+                    click.echo("No ticket details could be retrieved.")
+            else:
+                click.echo(f"Could not connect to {connector_type.upper()}. Check your configuration.")
+        except Exception as e:
+            click.echo(f"Error connecting to {connector_type.upper()}: {str(e)}")
+    
     # Display ticket information
     if tickets:
         click.echo("\nHere is the list of tickets that were merged after last release:")
         for ticket in tickets:
-            click.echo(f"- {ticket}")
+            ticket_title = ticket_details.get(ticket, {}).get('title', '')
+            if ticket_title:
+                click.echo(f"- {ticket}: {ticket_title}")
+            else:
+                click.echo(f"- {ticket}")
     else:
         click.echo("\nNo tickets found in commits after the last release.")
     
@@ -238,27 +291,55 @@ def prepare_release(repo, tag, tag_exists, message_format):
     format_to_use = message_format if message_format else get_message_format()
     
     # Generate release message
-    release_message = generate_release_message(project_name, tag, tickets, format_to_use)
+    release_message = generate_release_message(project_name, tag, tickets, format_to_use, ticket_details)
     
     return release_message
 
 
-@click.command()
+@click.group()
+def main():
+    """Git Release Helper CLI."""
+    pass
+
+
+@main.command()
 @click.option('--tag', help='The tag to create a release from. If not provided, a new tag will be generated.')
 @click.option('--force', '-f', is_flag=True, help='Skip branch validation and confirmation.')
 @click.option('--show-config', is_flag=True, help='Show the path to the configuration file and exit.')
 @click.option('--format', 'message_format', type=click.Choice(['markdown', 'plain']), 
               help='Format for the release message. Overrides the configuration setting.')
-def main(tag, force, show_config, message_format):
-    """GitHub Release Helper - A tool for creating GitHub releases."""
+def release(tag, force, show_config, message_format):
+    """Create a new release."""
     try:
         # Ensure templates directory exists
         ensure_templates_dir()
         
-        # Show configuration file path if requested
+        # Show configuration file path and contents if requested
         if show_config:
-            config_path = get_config_path()
-            click.echo(f"Configuration file: {config_path}")
+            from git_release_helper.config import get_config_path, get_local_config_path, get_config_content, load_config
+            
+            # Show global configuration
+            global_config_path = get_config_path()
+            click.echo(f"Global configuration file: {global_config_path}")
+            click.echo("=====================")
+            if os.path.exists(global_config_path):
+                click.echo(get_config_content(global_config_path))
+            else:
+                click.echo("Global configuration file does not exist.")
+            click.echo()
+            
+            # Show local configuration if it exists
+            local_config_path = get_local_config_path()
+            if local_config_path:
+                click.echo(f"Local configuration file: {local_config_path}")
+                click.echo("=====================")
+                click.echo(get_config_content(local_config_path))
+                click.echo()
+                
+                click.echo("Final configuration:")
+                click.echo("=====================")
+                click.echo(yaml.dump(load_config(), default_flow_style=False, sort_keys=False))
+            
             return
             
         # Get the current repository
@@ -310,6 +391,30 @@ def main(tag, force, show_config, message_format):
         click.echo("Current directory is not a git repository.")
     except Exception as e:
         click.echo(f"An error occurred: {str(e)}")
+
+
+@main.command()
+def init():
+    """Initialize local project configuration."""
+    from git_release_helper.config import generate_local_config
+    
+    try:
+        # Get the repository to verify we're in a git repo
+        repo = get_repo()
+        if not repo:
+            click.echo("Cannot initialize configuration: Not a git repository.")
+            return
+        
+        # Generate local config file
+        if generate_local_config():
+            click.echo("Local configuration initialized successfully.")
+            click.echo("You can now edit .release_config.yml to customize settings for this project.")
+        else:
+            click.echo("Failed to initialize local configuration.")
+    
+    except Exception as e:
+        click.echo(f"An error occurred: {str(e)}")
+
 
 if __name__ == '__main__':
     main()
