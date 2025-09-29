@@ -87,9 +87,9 @@ class JiraConnector(BaseConnector):
                         'status': 'Unknown',
                         'url': f"{self.api_url}/browse/{ticket_id}"
                     }
-            except (requests.RequestException, ValueError) as exception:
+            except (requests.RequestException, ValueError) as ex:
                 result[ticket_id] = {
-                    'title': f'Error fetching ticket: {str(exception)}',
+                    'title': f'Error fetching ticket: {str(ex)}',
                     'status': 'Error',
                     'url': f"{self.api_url}/browse/{ticket_id}"
                 }

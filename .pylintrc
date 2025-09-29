@@ -47,7 +47,8 @@ disable=
     too-many-locals,
     too-many-branches,
     too-many-statements,
-    consider-using-generator
+    consider-using-generator,
+    pointless-statement
 
 [FORMAT]
 # Maximum number of characters on a single line

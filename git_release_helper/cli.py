@@ -79,8 +79,8 @@ def find_last_tag(repo):
         if tags:
             return tags[0].name
         return None
-    except git.exc.GitCommandError as exception:
-        click.echo(f"Error finding last tag: {str(exception)}")
+    except git.exc.GitCommandError as ex:
+        click.echo(f"Error finding last tag: {str(ex)}")
         return None
 
 
@@ -205,8 +205,8 @@ def extract_project_name(repo):
             return dir_name
 
         return "Unknown Project"
-    except (AttributeError, TypeError, KeyError) as exception:
-        print(f"Error getting project name: {str(exception)}")
+    except (AttributeError, TypeError, KeyError) as ex:
+        print(f"Error getting project name: {str(ex)}")
         return "Unknown Project"
 
 
@@ -261,8 +261,8 @@ def prepare_release(repo, tag, tag_exists, message_format):
                 click.echo("There's nothing to release. Create new commits before "
                            "making a release.")
                 return None
-        except (IndexError, git.exc.GitCommandError) as exception:
-            click.echo(f"Error analyzing commits after tag: {str(exception)}")
+        except (IndexError, git.exc.GitCommandError) as ex:
+            click.echo(f"Error analyzing commits after tag: {str(ex)}")
             return None
     else:
         # No tags exist, use all commits
@@ -293,8 +293,8 @@ def prepare_release(repo, tag, tag_exists, message_format):
                     f"Could not connect to {connector_type.upper()}. "
                     "Check your configuration."
                 )
-        except (ConnectionError, ValueError, TypeError) as exception:
-            click.echo(f"Error connecting to {connector_type.upper()}: {str(exception)}")
+        except (ConnectionError, ValueError, TypeError) as ex:
+            click.echo(f"Error connecting to {connector_type.upper()}: {str(ex)}")
 
     # Display ticket information
     if tickets:
@@ -418,8 +418,8 @@ def release(tag, force, show_config, message_format):
 
     except git.exc.InvalidGitRepositoryError:
         click.echo("Current directory is not a git repository.")
-    except (git.exc.GitError, IOError, ValueError) as exception:
-        click.echo(f"An error occurred: {str(exception)}")
+    except (git.exc.GitError, IOError, ValueError) as ex:
+        click.echo(f"An error occurred: {str(ex)}")
 
 
 @main.command()
@@ -441,8 +441,8 @@ def init():
         else:
             click.echo("Failed to initialize local configuration.")
 
-    except (IOError, ValueError, KeyError) as exception:
-        click.echo(f"An error occurred: {str(exception)}")
+    except (IOError, ValueError, KeyError) as ex:
+        click.echo(f"An error occurred: {str(ex)}")
 
 
 if __name__ == '__main__':

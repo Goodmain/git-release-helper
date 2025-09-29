@@ -77,8 +77,8 @@ def load_config():
                 global_config = yaml.safe_load(file)
                 if global_config:
                     config.update(global_config)
-        except (yaml.YAMLError, IOError) as exception:
-            click.echo(f"Error loading global config file: {str(exception)}")
+        except (yaml.YAMLError, IOError) as ex:
+            click.echo(f"Error loading global config file: {str(ex)}")
 
     # Load local config if exists (overrides global config)
     if os.path.exists(LOCAL_CONFIG_FILE):
@@ -102,8 +102,8 @@ def load_config():
                             config[key] = value
 
                     click.echo("Local config loaded and applied.")
-        except (yaml.YAMLError, IOError) as exception:
-            click.echo(f"Error loading local config file: {str(exception)}")
+        except (yaml.YAMLError, IOError) as ex:
+            click.echo(f"Error loading local config file: {str(ex)}")
 
     # Store in module-level variable
     globals()['_CONFIG'] = config
@@ -117,8 +117,8 @@ def save_config(config):
     try:
         with open(CONFIG_FILE, 'w', encoding='utf-8') as file:
             yaml.dump(config, file, default_flow_style=False, sort_keys=False)
-    except IOError as exception:
-        click.echo(f"Error saving config file: {str(exception)}")
+    except IOError as ex:
+        click.echo(f"Error saving config file: {str(ex)}")
 
 def get_default_branches():
     """Get the list of default branch names."""
@@ -200,8 +200,8 @@ def generate_local_config():
             yaml.dump(local_config, file, default_flow_style=False, sort_keys=False)
         click.echo(f"Local config file created: {LOCAL_CONFIG_FILE}")
         return True
-    except IOError as exception:
-        click.echo(f"Error creating local config file: {str(exception)}")
+    except IOError as ex:
+        click.echo(f"Error creating local config file: {str(ex)}")
         return False
 
 def set_default_branches(branches):
@@ -226,8 +226,8 @@ def get_config_content(config_path):
         with open(config_path, 'r', encoding='utf-8') as file:
             config_content = yaml.safe_load(file)
             return yaml.dump(config_content, default_flow_style=False, sort_keys=False)
-    except (yaml.YAMLError, IOError) as exception:
-        return f"Error reading config file: {str(exception)}"
+    except (yaml.YAMLError, IOError) as ex:
+        return f"Error reading config file: {str(ex)}"
 
 def get_connector_type():
     """Get the configured connector type."""
