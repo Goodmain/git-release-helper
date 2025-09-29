@@ -129,7 +129,6 @@ connectors:
     api_url: "https://your-jira-instance.atlassian.net"
     api_key: "your-api-key"
     username: "your-email@example.com"
-    project_key: "PROJECT"
 ```
 
 ### Message Format

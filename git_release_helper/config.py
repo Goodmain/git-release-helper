@@ -17,8 +17,7 @@ DEFAULT_CONFIG = {
         "jira": {
             "api_url": "https://your-jira-instance.atlassian.net",
             "api_key": "",
-            "username": "",
-            "project_key": ""
+            "username": ""
         }
     }
 }

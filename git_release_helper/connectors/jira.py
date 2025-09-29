@@ -19,7 +19,6 @@ class JiraConnector(BaseConnector):
         self.api_url = config.get('api_url', '').rstrip('/')
         self.username = config.get('username', '')
         self.api_key = config.get('api_key', '')
-        self.project_key = config.get('project_key', '')
         
     def validate_connection(self):
         """

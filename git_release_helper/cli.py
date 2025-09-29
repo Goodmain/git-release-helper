@@ -114,8 +114,21 @@ def generate_release_message(project_name, tag, tickets, format_to_use, ticket_d
     # Format tickets list based on format
     if tickets:
         if ticket_details:
-            # Include ticket titles if available
-            tickets_list = "\n".join([f"- {ticket}: {ticket_details.get(ticket, {}).get('title', '')}" if ticket_details.get(ticket, {}).get('title', '') else f"- {ticket}" for ticket in tickets])
+            # Include ticket titles and statuses if available
+            tickets_list = []
+            for ticket in tickets:
+                ticket_info = ticket_details.get(ticket, {})
+                title = ticket_info.get('title', '')
+                status = ticket_info.get('status', '')
+                
+                if title and status:
+                    tickets_list.append(f"- {ticket}: {title} ({status})")
+                elif title:
+                    tickets_list.append(f"- {ticket}: {title}")
+                else:
+                    tickets_list.append(f"- {ticket}")
+            
+            tickets_list = "\n".join(tickets_list)
         else:
             tickets_list = "\n".join([f"- {ticket}" for ticket in tickets])
     else:
@@ -277,8 +290,12 @@ def prepare_release(repo, tag, tag_exists, message_format):
         click.echo("\nHere is the list of tickets that were merged after last release:")
         for ticket in tickets:
             ticket_title = ticket_details.get(ticket, {}).get('title', '')
+            ticket_status = ticket_details.get(ticket, {}).get('status', '')
             if ticket_title:
-                click.echo(f"- {ticket}: {ticket_title}")
+                if ticket_status:
+                    click.echo(f"- {ticket}: {ticket_title} ({ticket_status})")
+                else:
+                    click.echo(f"- {ticket}: {ticket_title}")
             else:
                 click.echo(f"- {ticket}")
     else:
