@@ -167,7 +167,8 @@ def get_project_name_from_git():
         remote_url = repo.remotes[0].url
 
         # Extract project name from remote URL
-        # Handle different formats: https://github.com/user/project.git or git@github.com:user/project.git
+        # Handle different formats: https://github.com/user/project.git
+        # or git@github.com:user/project.git
         if remote_url.endswith('.git'):
             remote_url = remote_url[:-4]  # Remove .git suffix
 

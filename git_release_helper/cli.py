@@ -79,7 +79,7 @@ def find_last_tag(repo):
         if tags:
             return tags[0].name
         return None
-    except Exception as exception:
+    except git.exc.GitCommandError as exception:
         click.echo(f"Error finding last tag: {str(exception)}")
         return None
 
@@ -108,7 +108,10 @@ def generate_release_message(project_name, tag, tickets, format_to_use, ticket_d
     except (IOError, OSError, UnicodeDecodeError):
         # Fallback to default template if file can't be read
         if format_to_use == 'markdown':
-            template_content = "# Deploying [PROJECT_NAME] `[TAG_NAME]`\n\n## Tickets:\n[TICKETS_LIST]"
+            template_content = (
+                "# Deploying [PROJECT_NAME] `[TAG_NAME]`\n\n"
+                "## Tickets:\n[TICKETS_LIST]"
+            )
         else:
             template_content = "Deploying [PROJECT_NAME] [TAG_NAME]\n\nTickets:\n[TICKETS_LIST]"
 
@@ -160,7 +163,10 @@ def check_remote_branch(repo, current_branch):
         behind_count = len(list(repo.iter_commits(f"{current_branch}..{remote_branch.name}")))
 
         if behind_count > 0:
-            click.echo(f"\nYour local branch is {behind_count} commit{'s' if behind_count > 1 else ''} behind the remote.")
+            click.echo(
+                f"\nYour local branch is {behind_count} "
+                f"commit{'s' if behind_count > 1 else ''} behind the remote."
+            )
             click.echo("Updating your branch is recommended to ensure you have the latest changes.")
             if click.confirm("Would you like to update your local branch now?"):
                 click.echo("Pulling latest changes...")
@@ -184,7 +190,8 @@ def extract_project_name(repo):
             remote_url = repo.remotes.origin.url
             if remote_url:
                 # Extract project name from remote URL
-                # Handle different formats: https://github.com/user/project.git or git@github.com:user/project.git
+                # Handle different formats: https://github.com/user/project.git
+                # or git@github.com:user/project.git
                 if remote_url.endswith('.git'):
                     remote_url = remote_url[:-4]  # Remove .git suffix
 
@@ -198,7 +205,7 @@ def extract_project_name(repo):
             return dir_name
 
         return "Unknown Project"
-    except Exception as exception:
+    except (AttributeError, TypeError, KeyError) as exception:
         print(f"Error getting project name: {str(exception)}")
         return "Unknown Project"
 
@@ -213,13 +220,13 @@ def handle_tag(repo, tag):
     else:
         # Check if the provided tag exists
         try:
-            repo.tags[tag]
             tag_exists = True
             click.echo(f"Error: Tag '{tag}' already exists in the repository.")
             click.echo("Please specify a different tag name or let the application generate one.")
             return None, None
         except IndexError:
-            click.echo(f"Tag '{tag}' will be created at the end of the process with your confirmation.")
+            click.echo(f"Tag '{tag}' will be created at the end "
+                       "of the process with your confirmation.")
 
     return tag, tag_exists
 
@@ -250,7 +257,8 @@ def prepare_release(repo, tag, tag_exists, message_format):
             # Check if there are any commits after the tag
             if not commits_after_tag:
                 click.echo(f"Error: No commits found after tag '{last_tag}'.")
-                click.echo("There's nothing to release. Create new commits before making a release.")
+                click.echo("There's nothing to release. Create new commits before "
+                           "making a release.")
                 return None
         except (IndexError, git.exc.GitCommandError) as exception:
             click.echo(f"Error analyzing commits after tag: {str(exception)}")
@@ -280,7 +288,10 @@ def prepare_release(repo, tag, tag_exists, message_format):
                 else:
                     click.echo("No ticket details could be retrieved.")
             else:
-                click.echo(f"Could not connect to {connector_type.upper()}. Check your configuration.")
+                click.echo(
+                    f"Could not connect to {connector_type.upper()}. "
+                    "Check your configuration."
+                )
         except (ConnectionError, ValueError, TypeError) as exception:
             click.echo(f"Error connecting to {connector_type.upper()}: {str(exception)}")
 
@@ -307,7 +318,9 @@ def prepare_release(repo, tag, tag_exists, message_format):
     format_to_use = message_format if message_format else get_message_format()
 
     # Generate release message
-    release_message = generate_release_message(project_name, tag, tickets, format_to_use, ticket_details)
+    release_message = generate_release_message(
+        project_name, tag, tickets, format_to_use, ticket_details
+    )
 
     return release_message
 
@@ -318,10 +331,12 @@ def main():
 
 
 @main.command()
-@click.option('--tag', help='The tag to create a release from. If not provided, a new tag will be generated.')
+@click.option('--tag', help='The tag to create a release from. '
+                            'If not provided, a new tag will be generated.')
 @click.option('--force', '-f', is_flag=True, help='Skip branch validation and confirmation.')
-@click.option('--show-config', is_flag=True, help='Show the path to the configuration file and exit.')
-@click.option('--format', 'message_format', type=click.Choice(['markdown', 'plain']), 
+@click.option('--show-config', is_flag=True,
+              help='Show the path to the configuration file and exit.')
+@click.option('--format', 'message_format', type=click.Choice(['markdown', 'plain']),
               help='Format for the release message. Overrides the configuration setting.')
 def release(tag, force, show_config, message_format):
     """Create a new release."""
@@ -420,7 +435,8 @@ def init():
         # Generate local config file
         if generate_local_config():
             click.echo("Local configuration initialized successfully.")
-            click.echo("You can now edit .release_config.yml to customize settings for this project.")
+            click.echo("You can now edit .release_config.yml to customize "
+                       "settings for this project.")
         else:
             click.echo("Failed to initialize local configuration.")
 
