@@ -19,6 +19,16 @@ class JiraConnector(BaseConnector):
         self.api_url = config.get('api_url', '').rstrip('/')
         self.username = config.get('username', '')
         self.api_key = config.get('api_key', '')
+        self.request_timeout = 10
+        
+    def _get_auth(self):
+        """
+        Get the authentication tuple for Jira API requests.
+        
+        Returns:
+            tuple: Authentication tuple (username, api_key)
+        """
+        return (self.username, self.api_key)
         
     def validate_connection(self):
         """
@@ -33,8 +43,8 @@ class JiraConnector(BaseConnector):
         try:
             response = requests.get(
                 f"{self.api_url}/rest/api/3/myself",
-                auth=(self.username, self.api_key),
-                timeout=10
+                auth=self._get_auth(),
+                timeout=self.request_timeout
             )
             return response.status_code == 200
         except Exception:
@@ -59,8 +69,8 @@ class JiraConnector(BaseConnector):
             try:
                 response = requests.get(
                     f"{self.api_url}/rest/api/2/issue/{ticket_id}",
-                    auth=(self.username, self.api_key),
-                    timeout=10
+                    auth=self._get_auth(),
+                    timeout=self.request_timeout
                 )
                 
                 if response.status_code == 200:
