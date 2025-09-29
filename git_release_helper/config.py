@@ -61,8 +61,9 @@ def load_config():
     """Load configuration from file or create default if it doesn't exist."""
     # Use the module-level _CONFIG variable without global statement
     # Return already loaded config if available
-    if globals().get('_CONFIG') is not None:
-        return globals().get('_CONFIG')
+    config_loaded = globals().get('_CONFIG')
+    if config_loaded is not None:
+        return config_loaded
 
     ensure_config_dir()
 

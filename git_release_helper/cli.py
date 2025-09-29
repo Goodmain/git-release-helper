@@ -220,6 +220,7 @@ def handle_tag(repo, tag):
     else:
         # Check if the provided tag exists
         try:
+            repo.tags[tag]
             tag_exists = True
             click.echo(f"Error: Tag '{tag}' already exists in the repository.")
             click.echo("Please specify a different tag name or let the application generate one.")
