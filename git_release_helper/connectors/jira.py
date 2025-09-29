@@ -68,7 +68,7 @@ class JiraConnector(BaseConnector):
         for ticket_id in ticket_ids:
             try:
                 response = requests.get(
-                    f"{self.api_url}/rest/api/2/issue/{ticket_id}",
+                    f"{self.api_url}/rest/api/3/issue/{ticket_id}",
                     auth=self._get_auth(),
                     timeout=self.request_timeout
                 )
