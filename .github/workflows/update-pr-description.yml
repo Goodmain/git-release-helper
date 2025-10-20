@@ -53,7 +53,7 @@ jobs:
             - What changes were made in the pull request
             - The reasons for making these changes
             - Any breaking changes involved
-            Use bullet points for clarity where appropriate. After drafting the summary, verify that all required points are covered and the total length remains under 200 words. Do not begin the summary with a title. Do not include backticks or apostrophes in the summary.
+            Use bullet points for clarity where appropriate. After drafting the summary, verify that all required points are covered and the total length remains under 200 words. Do not begin the summary with a title.
 
             ${diff}`;
 
@@ -74,12 +74,14 @@ jobs:
             core.setOutput('summary', summary);
 
       - name: Update Pull Request description
+        env:
+          SUMMARY_OUTPUT: ${{ steps.generate_summary.outputs.summary }}
         uses: actions/github-script@v6
         with:
           script: |
             const { owner, repo } = context.repo;
             const prNumber = context.payload.pull_request.number;
-            let summary = `${{ steps.generate_summary.outputs.summary }}`;
+            let summary = process.env.SUMMARY_OUTPUT;
             const existingBody = context.payload.pull_request.body;
 
             // Replace the summary placeholder in the PR body
