@@ -48,7 +48,9 @@ disable=
     too-many-branches,
     too-many-statements,
     consider-using-generator,
-    pointless-statement
+    pointless-statement,
+    too-few-public-methods
+
 
 [FORMAT]
 # Maximum number of characters on a single line

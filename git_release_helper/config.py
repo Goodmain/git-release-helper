@@ -12,6 +12,13 @@ DEFAULT_CONFIG = {
     "project_name": None,
     "message_format": "markdown",
     "templates_dir": "./templates",
+    "ai_summary": {
+        "provider": None,  # Options: "openai", etc.
+        "openai": {
+            "api_key": "",
+            "model": "gpt-4o"
+        }
+    },
     "connectors": {
         "type": None,  # Options: None, "jira", "github", "gitlab", etc.
         "jira": {
@@ -46,6 +53,7 @@ def ensure_templates_dir():
     if not os.path.exists(markdown_template_path):
         with open(markdown_template_path, "w", encoding="utf-8") as file:
             file.write("# Deploying [PROJECT_NAME] `[TAG_NAME]`\n\n")
+            file.write("[SUMMARY]\n\n")
             file.write("## Tickets:\n")
             file.write("[TICKETS_LIST]")
 
@@ -54,6 +62,7 @@ def ensure_templates_dir():
     if not os.path.exists(plain_template_path):
         with open(plain_template_path, "w", encoding="utf-8") as file:
             file.write("Deploying [PROJECT_NAME] [TAG_NAME]\n\n")
+            file.write("[SUMMARY]\n\n")
             file.write("Tickets:\n")
             file.write("[TICKETS_LIST]")
 
@@ -139,6 +148,11 @@ def get_tag_format():
     """Get the tag format pattern."""
     config = load_config()
     return config.get("tag_format", DEFAULT_CONFIG["tag_format"])
+
+def get_ai_summary_config():
+    """Get AI summary configuration."""
+    config = load_config()
+    return config.get("ai_summary", DEFAULT_CONFIG["ai_summary"])
 
 def get_project_name():
     """Get the project name."""
