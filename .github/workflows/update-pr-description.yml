@@ -81,7 +81,7 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const prNumber = context.payload.pull_request.number;
-            let summary = process.env.SUMMARY_OUTPUT;
+            let summary = core.getInput('summary');
             const existingBody = context.payload.pull_request.body;
 
             // Replace the summary placeholder in the PR body
@@ -94,3 +94,5 @@ jobs:
               pull_number: prNumber,
               body: newBody,
             });
+          input: |
+            summary: ${{ steps.generate_summary.outputs.summary }}
