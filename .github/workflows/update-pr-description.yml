@@ -1,0 +1,98 @@
+name: Update PR Description
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  update-description:
+    #if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install openai
+
+      - name: Generate PR Summary with AI
+        if: contains(github.event.pull_request.body, '[SUMMARY]')
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+        uses: actions/github-script@v6
+        id: generate_summary
+        with:
+          script: |
+            const { OpenAI } = require("openai");
+
+            const openai = new OpenAI({
+                apiKey: process.env.OPENAI_API_KEY,
+            });
+            const model = process.env.OPENAI_MODEL;
+
+            const pr = context.payload.pull_request;
+            const { data: diff } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                mediaType: { format: 'diff' }
+            });
+
+            const prompt = `You are an expert software engineer. Your job is to summarize pull requests for code reviewers. Given a Git diff, generate a concise, clear summary that describes:
+            - What the PR changes
+            - Why these changes were made
+            - Any breaking changes.
+            Write in bullet points when appropriate. Don't start text with title. Keep it under 200 words.
+            
+            ${diff}`;
+
+            const completion = await openai.chat.completions.create({
+                model: model,
+                messages: [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                max_tokens: 500,
+                temperature: 0.7,
+            });
+
+            const summary = completion.choices[0]?.message.content.trim() || "No summary generated.";
+            console.log("Generated summary:", summary);
+            core.setOutput('summary', summary);
+
+      - name: Update Pull Request description
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.pull_request.number;
+            let summary = '';
+            const existingBody = context.payload.pull_request.body;
+            
+            if (steps && steps.generate_summary && steps.generate_summary.outputs) {
+              summary = steps.generate_summary.outputs.summary;
+            }
+            
+            // Replace the summary placeholder in the PR body
+            let newBody = existingBody.replace('[SUMMARY]', summary);
+            
+            // Update the PR
+            await github.rest.pulls.update({
+              owner,
+              repo,
+              pull_number: prNumber,
+              body: newBody,
+            });
