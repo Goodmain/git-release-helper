@@ -49,11 +49,11 @@ jobs:
                 mediaType: { format: 'diff' }
             });
 
-            const prompt = `You are an expert software engineer. Your job is to summarize pull requests for code reviewers. Given a Git diff, generate a concise, clear summary that describes:
-            - What the PR changes
-            - Why these changes were made
-            - Any breaking changes.
-            Write in bullet points when appropriate. Don't start text with title and don't use backticks or apostrophes. Keep it under 200 words.
+            const prompt = `You are an expert software engineer tasked with summarizing pull requests for code reviewers. Begin with a concise checklist (3-7 bullets) outlining the main changes before elaborating, to provide a clear overview at a glance. Given a Git diff, provide a concise and clear summary that addresses the following points:
+            - What changes were made in the pull request
+            - The reasons for making these changes
+            - Any breaking changes involved
+            Use bullet points for clarity where appropriate. After drafting the summary, verify that all required points are covered and the total length remains under 200 words. Do not begin the summary with a title. Do not include backticks or apostrophes in the summary.
 
             ${diff}`;
 
