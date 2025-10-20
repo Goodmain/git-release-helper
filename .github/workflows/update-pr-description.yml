@@ -79,13 +79,9 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const prNumber = context.payload.pull_request.number;
-            let summary = '';
+            let summary = `${{ steps.generate_summary.outputs.summary }}`;
             const existingBody = context.payload.pull_request.body;
-            
-            if (steps && steps.generate_summary && steps.generate_summary.outputs) {
-              summary = steps.generate_summary.outputs.summary;
-            }
-            
+
             // Replace the summary placeholder in the PR body
             let newBody = existingBody.replace('[SUMMARY]', summary);
             
