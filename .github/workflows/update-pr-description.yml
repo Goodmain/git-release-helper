@@ -53,8 +53,8 @@ jobs:
             - What the PR changes
             - Why these changes were made
             - Any breaking changes.
-            Write in bullet points when appropriate. Don't start text with title and don't use backticks. Keep it under 200 words.
-            
+            Write in bullet points when appropriate. Don't start text with title and don't use backticks or apostrophes. Keep it under 200 words.
+
             ${diff}`;
 
             const completion = await openai.chat.completions.create({
