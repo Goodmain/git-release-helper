@@ -20,15 +20,34 @@ jobs:
     react:
         if: |
             github.event_name == 'pull_request' ||
-            (github.event_name == 'issue_comment' &&
-             github.event.issue.pull_request != null &&
-             contains(toLower(github.event.comment.body), 'deploy pr'))
+            github.event_name == 'workflow_dispatch' ||
+            github.event_name == 'issue_comment'
         runs-on: ubuntu-latest
         permissions:
             pull-requests: write
+        outputs:
+            should-deploy: ${{ steps.check.outputs.should-deploy }}
         steps:
+            - name: Lowercase comment body
+              id: lowercase
+              run: |
+                  echo "COMMENT_BODY=${COMMENT_BODY@L}" >> ${GITHUB_ENV}
+              env:
+                  COMMENT_BODY: ${{ github.event.comment.body }}
+
+            - name: Check if should deploy
+              id: check
+              run: |
+                  if [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+                    echo "should-deploy=true" >> ${GITHUB_OUTPUT}
+                  elif [[ "${{ github.event.issue.pull_request }}" != "" && "${COMMENT_BODY}" == *"deploy pr"* ]]; then
+                    echo "should-deploy=true" >> ${GITHUB_OUTPUT}
+                  else
+                    echo "should-deploy=false" >> ${GITHUB_OUTPUT}
+                  fi
+
             - name: React to PR open
-              if: github.event_name == 'pull_request'
+              if: github.event_name == 'pull_request' 
               uses: actions/github-script@v7
               with:
                   script: |
@@ -40,7 +59,10 @@ jobs:
                       });
 
             - name: React to comment
-              if: github.event_name == 'issue_comment'
+              if: |
+                  github.event_name == 'issue_comment' &&
+                  env.COMMENT_BODY != '' &&
+                  contains(env.COMMENT_BODY, 'deploy pr')
               uses: actions/github-script@v7
               with:
                   script: |
@@ -53,12 +75,7 @@ jobs:
 
     deploy:
         needs: react
-        if: |
-            github.event_name == 'pull_request' ||
-            github.event_name == 'workflow_dispatch' ||
-            (github.event_name == 'issue_comment' &&
-             github.event.issue.pull_request != null &&
-             contains(toLower(github.event.comment.body), 'deploy pr'))
+        if: needs.react.outputs['should-deploy'] == 'true'
         runs-on: ubuntu-latest
         steps:
             - name: Fake deploy
