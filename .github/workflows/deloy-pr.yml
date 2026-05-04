@@ -20,11 +20,14 @@ jobs:
     react:
         if: |
             github.event_name == 'pull_request' ||
+            github.event_name == 'workflow_dispatch' ||
             (github.event_name == 'issue_comment' &&
              github.event.issue.pull_request != null &&
-             github.event.comment.body == 'deploy pr')
+             github.event.comment.body == 'deploy pr' &&
+             contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
         runs-on: ubuntu-latest
         permissions:
+            issues: write
             pull-requests: write
         steps:
             - name: React to PR open
@@ -50,6 +53,7 @@ jobs:
                         comment_id: context.payload.comment.id,
                         content: 'rocket',
                       });
+
     deploy:
         needs: react
         runs-on: ubuntu-latest
