@@ -8,9 +8,10 @@ from git_release_helper.config import (
     get_default_branches, get_ticket_pattern, get_tag_format,
     get_project_name, get_message_format, get_templates_dir, ensure_templates_dir,
     get_connector_type, get_connector_config, get_config_path, get_local_config_path,
-    get_config_content, load_config, generate_local_config
+    get_config_content, load_config, generate_local_config, get_ai_summary_config
 )
 from git_release_helper.connectors import get_connector
+from git_release_helper.agents import get_ai_agent
 
 
 def get_repo():
@@ -97,7 +98,10 @@ def extract_tickets_from_commits(commits, ticket_pattern):
     return sorted(tickets)
 
 
-def generate_release_message(project_name, tag, tickets, format_to_use, ticket_details=None):
+def generate_release_message(
+    *, project_name, tag, tickets, format_to_use,
+    ticket_details=None, commit_messages=None
+):
     """Generate a release message based on the specified format."""
     template_file = os.path.join(get_templates_dir(), f"{format_to_use}.template")
 
@@ -107,13 +111,11 @@ def generate_release_message(project_name, tag, tickets, format_to_use, ticket_d
             template_content = file.read()
     except (IOError, OSError, UnicodeDecodeError):
         # Fallback to default template if file can't be read
-        if format_to_use == 'markdown':
-            template_content = (
+        template_content = (
                 "# Deploying [PROJECT_NAME] `[TAG_NAME]`\n\n"
+                "[SUMMARY]\n\n"
                 "## Tickets:\n[TICKETS_LIST]"
             )
-        else:
-            template_content = "Deploying [PROJECT_NAME] [TAG_NAME]\n\nTickets:\n[TICKETS_LIST]"
 
     # Format tickets list based on format
     if tickets:
@@ -138,11 +140,24 @@ def generate_release_message(project_name, tag, tickets, format_to_use, ticket_d
     else:
         tickets_list = "No tickets found in this release."
 
+    # Generate AI summary if enabled
+    summary = ""
+    ai_config = get_ai_summary_config()
+    if ai_config.get('provider', None) and commit_messages:
+        provider = ai_config.get('provider')
+        if provider:
+            ai_agent = get_ai_agent(ai_config)
+            if ai_agent:
+                generated_summary = ai_agent.generate_summary(commit_messages)
+                if generated_summary:
+                    summary = generated_summary
+
     # Replace placeholders in template
     release_message = template_content
     release_message = release_message.replace("[PROJECT_NAME]", project_name)
     release_message = release_message.replace("[TAG_NAME]", tag)
     release_message = release_message.replace("[TICKETS_LIST]", tickets_list)
+    release_message = release_message.replace("[SUMMARY]", summary if summary else "")
 
     return release_message
 
@@ -243,9 +258,14 @@ def prepare_release(repo, tag, tag_exists, message_format):
 
     # Get commits after the last tag
     commits_after_tag = []
+    commit_messages = []
     if last_tag:
         try:
             commits_after_tag = list(repo.iter_commits(f"{last_tag}..HEAD"))
+
+            # Collect commit messages for AI summary
+            for commit in commits_after_tag:
+                commit_messages.append(commit.message.strip())
 
             # Display information about the last tag
             tag_commit = repo.tags[last_tag].commit
@@ -267,6 +287,9 @@ def prepare_release(repo, tag, tag_exists, message_format):
     else:
         # No tags exist, use all commits
         commits_after_tag = list(repo.iter_commits())
+        # Collect commit messages for AI summary
+        for commit in commits_after_tag:
+            commit_messages.append(commit.message.strip())
         click.echo("\nNo previous tags found. Using all commits for this release.")
 
     # Extract ticket names from commit messages
@@ -320,7 +343,12 @@ def prepare_release(repo, tag, tag_exists, message_format):
 
     # Generate release message
     release_message = generate_release_message(
-        project_name, tag, tickets, format_to_use, ticket_details
+        project_name=project_name,
+        tag=tag,
+        tickets=tickets,
+        format_to_use=format_to_use,
+        ticket_details=ticket_details,
+        commit_messages=commit_messages
     )
 
     return release_message

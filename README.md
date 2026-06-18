@@ -131,6 +131,22 @@ connectors:
     username: "your-email@example.com"
 ```
 
+### AI Summary Integration
+
+The tool can generate an AI-powered summary of changes in your release using OpenAI:
+
+```yaml
+ai_summary:
+  provider: "openai"  # Currently only OpenAI is supported
+  openai:
+    api_key: "your-openai-api-key"
+    model: "gpt-3.5-turbo"  # Default model
+```
+
+You can also set the OpenAI API key via the `OPENAI_API_KEY` environment variable.
+
+When enabled, the AI summary will be included in your release message before the tickets list, providing a concise overview of the changes in the release (limited to 200 characters).
+
 ### Message Format
 
 You can customize the format of release messages:
